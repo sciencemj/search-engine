@@ -1,6 +1,9 @@
 import requests
+from tqdm import tqdm
 from bs4 import BeautifulSoup
 
+#ink_count = 0
+#total_count = 0
     
 def prRed(skk) -> None: print("\033[91m{}\033[00m" .format(skk))
 
@@ -30,6 +33,8 @@ def open_url(url: str) -> list[str]:
     a_list = [a.get('href') for a in html.find_all('a')]
     a_list = list(filter(lambda href: href is not None, a_list))
     if len(a_list) > 0:
+        #global link_count
+        #link_count += len(a_list)
         link_list = [a for a in a_list if (a.startswith('https://') and not url_main in a)] #get only https link and exclude in-site link
         for i, link in enumerate(link_list, 1):
             print(f"[{i}] {link}")
@@ -38,17 +43,20 @@ def open_url(url: str) -> list[str]:
         link_list = []
     return link_list
     
-def search(startURL: str, depth: int, tree: list) -> dict:
+def search(startURL: str, depth: int, tree: list, pbar) -> dict:
+    #global total_count 
+    #total_count += 1
     if depth < 0: #end searching
         return {}
     links: list[str] = open_url(startURL)
+    pbar.update(1)
     tree.append(startURL)
     if len(links) > 0: 
         link_dic: dict = {link:1 for link in links}
         for link in links:
             if link in tree: #같은 경로에서 열었던 링크를 열면 안됨
                 continue
-            result = search(link, depth-1, tree)
+            result = search(link, depth-1, tree, pbar)
             link_dic = {k: link_dic.get(k, 0) + result.get(k, 0) for k in set(link_dic) | set(result)} #merge two dict
     else:
         link_dic = {}
@@ -62,8 +70,13 @@ def main() -> None:
     if(search_depth <= 0):
         print("search depth must be over 0!")
     else:
-        rank_dic: dict = search(startURL, search_depth, [])
-        sorted_dic = dict(sorted(rank_dic.items(), key=lambda item: item[1], reverse=True))
+        total_steps = pow(9, (search_depth + 1)) # avarage link in site is 9
+        with tqdm(total=total_steps) as pbar:
+            rank_dic: dict = search(startURL, search_depth, [], pbar)
+            sorted_dic = dict(sorted(rank_dic.items(), key=lambda item: item[1], reverse=True))
+        #print(total_count)
+        #print(link_count)
+        #print(link_count/total_count)
     while True:
         user_input: str = input('>>')
         clear()
@@ -87,3 +100,5 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+#TODO #1 검색 진행도 표시 기능
